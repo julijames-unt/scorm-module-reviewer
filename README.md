@@ -112,8 +112,3 @@ If your institution would rather the page make no external request at all, delet
 | `docs/design-spec.md` | Design decisions, scope boundaries, and the reasoning behind them |
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
 
-## Licence
-
-Not yet set. Until a `LICENSE` file is added, default copyright applies and the work is not licensed for reuse outside the institution. If you intend others to reuse it, add one; if you intend the opposite, the current state is already correct.
-
-Whatever you choose, the JSZip notice in `THIRD-PARTY-NOTICES.md` has to stay.
