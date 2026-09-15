@@ -5,7 +5,8 @@
 **Standard:** WCAG 2.1 Level AA
 **Date of evaluation:** September 10, 2026
 **Evaluated by:** Claude, at the request of Juli James
-**Version evaluated:** Standalone build, `module-review-desk.html`
+**Version evaluated:** Standalone build, `index.html`
+**Re-verified:** September 15, 2026, after the component-detection change (see `CHANGELOG.md`). Full automated suite re-run with no new findings: zero violations across four application states in both themes, 320px reflow clean, complete keyboard task performed with no mouse input.
 
 ---
 

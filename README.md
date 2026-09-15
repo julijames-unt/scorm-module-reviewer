@@ -17,7 +17,7 @@ A sample module is built in, so the tool can be demonstrated without a real pack
 - It does not call any AI service. Every edit is deterministic.
 - It does not upload anything. All processing happens in the visitor's browser.
 - It does not add, delete or restructure sections, components or images. Those are requests, not edits.
-- It is not a review and approval system. There are no accounts, no comment threads and no sign-off state, by design. See `docs/design-spec.md`, Part 7.
+- It is not a review and approval system. There are no accounts, no comment threads and no sign-off state, by design.
 
 ## Privacy
 
@@ -61,7 +61,7 @@ Three things are outstanding, and none of them are code.
 <meta name="scorm-builder-format" content="reading-v1">
 ```
 
-The builder skill should emit this on every package, and existing packages need it backfilled. Without it the guard against format drift has nothing to check. See `docs/design-spec.md`, Part 5.
+The builder skill emits this on every package as of September 2026. Packages built before that need it backfilled. Without it the guard against format drift has nothing to check, and the tool opens the package with a visible warning.
 
 **2. Decide who receives review files, and how quickly they respond.** Requests that go nowhere teach faculty that the participation was decorative, and they stop using the tool. This is the commitment that decides whether the note path works. It belongs in the documentation that goes out with the link.
 
@@ -87,6 +87,16 @@ Drag and drop is offered but never required. Every path through the tool is avai
 
 ---
 
+## Keeping up with the builder skill
+
+The tool reads packages produced by `scorm-canvas-builder`, so the two drift apart if the builder's markup changes and nothing here is updated.
+
+It is built to tolerate that. Editable text is found by walking the document for text-bearing elements rather than by matching a list of class names, so a component the tool has never seen is still readable, still editable, and still able to take a note. Component counting and labelling work the same way: they match on behaviour (`aria-expanded`, `role="radio"`, `data-dnd-group`) before falling back to class names, and they carry every class vocabulary the builder has used so far.
+
+What that buys you: a renamed component degrades to a generic label rather than disappearing. What it does not buy you: perfect labels for markup written after this version. If a new component type appears and its notes come back labelled "div text", add it to `KIND_RULES` and, if it is countable, to `structureCounts`.
+
+**Never let a count silently return zero.** A validation check that compares nothing to nothing passes every time and tells you the package is intact when it was never examined. That is the failure this version fixed: an earlier build counted accordions by one class name, the builder renamed it, and the guard reported success on packages it had not checked. The breakdown shown on the Finish panel exists so a zero is visible rather than summed away.
+
 ## Making changes
 
 The tool is a single file. Edit `index.html`, commit, and Pages redeploys.
@@ -108,7 +118,10 @@ If your institution would rather the page make no external request at all, delet
 |---|---|
 | `index.html` | The entire tool, self-contained |
 | `ACCESSIBILITY.md` | WCAG 2.1 AA conformance report |
+| `CHANGELOG.md` | What changed in each version, and why |
 | `THIRD-PARTY-NOTICES.md` | JSZip licence notice, which must be retained |
-| `docs/design-spec.md` | Design decisions, scope boundaries, and the reasoning behind them |
+| `LICENSE` | MIT |
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
+
+The design spec that sits behind these decisions is kept in the Educational Development working folder rather than in this repository, since it contains internal process detail.
 

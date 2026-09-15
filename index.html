@@ -322,23 +322,45 @@ const KNOWN_FORMATS = ["reading-v1", "quiz-v1"];
 const LOCKED_SELECTORS = [
   ".flip-hint", ".skip-link", "#statusMsg", "#completeMsg",
   "#completeBtn", "[data-prev]", "[data-next]", ".acc-badge",
-  ".ring-label", ".progress-label"
+  ".accordion-exclusive .badge", ".kc-submit", ".continue-btn",
+  ".ring-label", ".progress-label", ".lesson-meta", ".tab-ring"
 ];
 
 /* Friendly names for anchors, most specific first. */
+/* Component class names have changed between package generations, so match on
+   every vocabulary we have seen and then fall back to ARIA behaviour, which
+   survives a rename. Most specific first. */
 const KIND_RULES = [
-  [".flip-back", "flip card, back"],
+  [".flip-hint", "flip card, hint"],
+  [".flip-back, .flip-card-back", "flip card, back"],
   [".flip-q", "flip card, question"],
   [".flip-tag", "flip card, label"],
-  [".flip-hint", "flip card, hint"],
-  [".acc-trigger", "accordion heading"],
-  [".acc-panel *", "accordion content"],
+  [".flip-front, .flip-card-front", "flip card, front"],
+  [".flip-face, .flip-card-face", "flip card face"],
+  [".acc-trigger, .accordion-header", "accordion heading"],
+  [".acc-panel *, .accordion-panel *", "accordion content"],
+  [".kc-prompt", "knowledge check question"],
+  [".kc-option", "knowledge check option"],
+  [".kc-feedback, .kc-feedback *", "knowledge check feedback"],
+  [".hero-eyebrow, .eyebrow", "section eyebrow"],
+  [".hero h2, .hero-title", "section title"],
+  [".hero *", "section header"],
+  [".stat-tile *, .stat-num, .stat-label", "statistic tile"],
+  [".topic-card *", "topic card"],
+  [".pullquote, .pullquote *", "pull quote"],
+  [".statement-text, .statement-sub, .statement-eyebrow, .statement-note", "statement banner"],
+  [".journey-step *", "journey step"],
+  [".obj-list *", "learning objective"],
+  [".part-kicker, .part-title, .part-ch", "part map"],
+  [".image-slot *", "image placeholder"],
   [".tab-kicker", "sidebar kicker"],
   [".tab", "sidebar label"],
   [".completion *", "completion block"],
   [".callout *", "callout"],
-  [".dz-item, .drag-item", "drag-and-drop item"],
-  [".dropzone-label, .dz-label", "drop zone label"],
+  [".dz-item, .drag-item, .dnd-item", "drag-and-drop item"],
+  ["[data-dnd-group]", "drag-and-drop item"],
+  [".dropzone-label, .dz-label, .dnd-zone-label", "drop zone label"],
+  ["[data-dnd-accepts], .dnd-zone", "drop zone"],
   [".hotspot-detail *, .hs-detail *", "image hotspot detail"],
   [".branch-node *, .node *", "branching scenario"],
   ["figcaption", "figure caption"],
@@ -349,7 +371,10 @@ const KIND_RULES = [
   ["h2", "section title"],
   ["h3", "subheading"],
   ["h4", "subheading"],
-  ["p", "paragraph"]
+  ["p", "paragraph"],
+  /* behaviour fallbacks, for markup this build has never seen */
+  ["[aria-expanded]", "expandable heading"],
+  ["[role=\"radio\"]", "answer option"]
 ];
 
 const INLINE_OK = new Set(["A","B","STRONG","I","EM","SPAN","BR","SUP","SUB","CODE",
@@ -487,12 +512,33 @@ function tagEditable(doc) {
   }
 }
 
+/* Count components by what they DO, not by what they are called. Class names
+   have already changed once between package generations, and a guard that
+   silently counts zero is worse than no guard: 0 === 0 passes every time. */
+function countUnion(doc, selectors) {
+  const seen = new Set();
+  for (const sel of selectors) {
+    let found;
+    try { found = doc.querySelectorAll(sel); } catch (e) { continue; }
+    found.forEach(el => seen.add(el));
+  }
+  return seen.size;
+}
+
 function structureCounts(doc) {
   const q = s => doc.querySelectorAll(s).length;
   return {
-    panels: q('[role="tabpanel"]'), tabs: q('[role="tab"]'),
-    accItems: q(".acc-trigger"), flips: q(".flip-card"),
-    images: q("img"), tables: q("table"), scripts: q("script[src]")
+    panels: q('[role="tabpanel"]'),
+    tabs: q('[role="tab"]'),
+    accItems: countUnion(doc, ['[aria-expanded]', '.acc-trigger', '.accordion-header']),
+    flips: countUnion(doc, ['.flip-card', '.flipcard']),
+    options: countUnion(doc, ['[role="radio"]', '.kc-option']),
+    dnd: countUnion(doc, ['[data-dnd-group]', '.drag-item', '.dz-item', '.dnd-item']),
+    zones: countUnion(doc, ['[data-dnd-accepts]', '.dnd-zone', '.dropzone-target']),
+    hotspots: countUnion(doc, ['.hotspot-marker', '[data-hotspot]', '.hs-marker']),
+    images: q("img"),
+    tables: q("table"),
+    scripts: q("script[src]")
   };
 }
 
@@ -1026,8 +1072,17 @@ function validate(doc) {
   const checks = [];
   const same = k => now[k] === was[k];
   checks.push(["Sections still intact (" + now.panels + ")", same("panels") && same("tabs")]);
-  checks.push(["Interactive pieces still intact (" + (now.accItems + now.flips) + ")",
-    same("accItems") && same("flips")]);
+  const KINDS = [["accItems", "accordions"], ["flips", "flip cards"],
+                 ["options", "answer options"], ["dnd", "drag items"],
+                 ["zones", "drop zones"], ["hotspots", "hotspots"]];
+  const present = KINDS.filter(k => now[k[0]] > 0 || was[k[0]] > 0);
+  checks.push([
+    present.length
+      ? "Interactive pieces still intact (" +
+        present.map(k => now[k[0]] + " " + k[1]).join(", ") + ")"
+      : "No interactive pieces in this module, nothing to check",
+    present.every(k => same(k[0]))
+  ]);
   checks.push(["Images and tables untouched", same("images") && same("tables")]);
   let ariaOK = true;
   doc.querySelectorAll("[aria-controls]").forEach(el => {
